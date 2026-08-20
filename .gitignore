@@ -1,0 +1,13 @@
+# A Vencord checkout cloned here by the installer
+/Vencord/
+
+# Build output, if anyone builds in place
+/dist/
+node_modules/
+
+# Editors and OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

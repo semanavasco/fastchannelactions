@@ -1,0 +1,92 @@
+name: Build
+
+# The plugin only compiles inside a Vencord checkout, so CI clones Vencord, drops the
+# plugin into src/userplugins, and builds. This catches both our own regressions and
+# upstream Vencord changes that break the plugin.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Vencord and Discord move independently of this repo, so build weekly to find
+  # breakage before users do.
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out plugin
+        uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - name: Check out Vencord
+        uses: actions/checkout@v4
+        with:
+          repository: Vendicated/Vencord
+          path: Vencord
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: Vencord/pnpm-lock.yaml
+
+      - name: Install plugin into Vencord
+        run: |
+          mkdir -p Vencord/src/userplugins/fastChannelActions
+          cp plugin/*.ts plugin/*.tsx plugin/*.css Vencord/src/userplugins/fastChannelActions/
+
+      - name: Install dependencies
+        working-directory: Vencord
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: Vencord
+        run: |
+          # Only this plugin's errors should fail the build; Vencord's own tree is not
+          # our responsibility.
+          npx tsc --noEmit -p tsconfig.json 2>&1 | tee /tmp/tsc.log || true
+          if grep -q "userplugins/fastChannelActions" /tmp/tsc.log; then
+            grep "userplugins/fastChannelActions" /tmp/tsc.log
+            exit 1
+          fi
+
+      - name: Lint
+        working-directory: Vencord
+        run: npx eslint src/userplugins/fastChannelActions
+
+      - name: Build
+        working-directory: Vencord
+        run: pnpm build
+
+      - name: Verify plugin is in the bundle
+        working-directory: Vencord
+        run: |
+          grep -q FastChannelActions dist/vencordDesktopRenderer.js
+          grep -q vc-fca-button dist/vencordDesktopRenderer.css
+
+  # The installers are what users actually run, so check they at least parse. The bash
+  # one is developed on Linux; the PowerShell one has no other coverage.
+  installers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check install.sh syntax
+        run: bash -n install.sh
+
+      - name: Check install.ps1 syntax
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "$PWD/install.ps1", [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }
+          Write-Host "install.ps1 parses cleanly"

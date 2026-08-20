@@ -1,0 +1,145 @@
+/* FastChannelActions - hover action buttons on channel rows */
+
+/* Mount point injected into each channel row's linkTop container. */
+/* The mount sits inside the row's <a>, so the empty container must not swallow
+   clicks meant for the channel link itself. Buttons re-enable pointer events. */
+.vc-fca-mount {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    padding-left: 4px;
+    flex: 0 0 auto;
+    pointer-events: none;
+}
+
+.vc-fca-mount .vc-fca-button {
+    pointer-events: auto;
+}
+
+.vc-fca-container {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 0 0 auto;
+}
+
+/* The buttons render inside the channel row, which clips its content. Without this the
+   tooltip would be cut off by the row's bounds. */
+.vc-fca-mount,
+.vc-fca-container {
+    overflow: visible;
+}
+
+.vc-fca-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin: 0 2px;
+    padding: 0;
+    cursor: pointer;
+    /* Discord renamed the interactive colours: --interactive-normal/hover/active became
+       --interactive-icon-default/hover/active. The old names are kept as a fallback for
+       older builds, so the user's theme is followed either way. */
+    color: var(--interactive-icon-default, var(--interactive-normal, currentcolor));
+    background: none;
+    border: none;
+    border-radius: 4px;
+    flex: 0 0 auto;
+}
+
+.vc-fca-button:hover {
+    color: var(--interactive-icon-hover, var(--interactive-hover, currentcolor));
+    background: var(--interactive-background-hover, transparent);
+}
+
+.vc-fca-button:active {
+    color: var(--interactive-icon-active, var(--interactive-active, currentcolor));
+    background: var(--interactive-background-active, transparent);
+}
+
+.vc-fca-button:focus-visible {
+    /* --focus-primary is gone; the current token is --border-focus. */
+    outline: 2px solid var(--border-focus, var(--focus-primary, currentcolor));
+    outline-offset: 1px;
+}
+
+.vc-fca-danger,
+.vc-fca-danger:hover,
+.vc-fca-danger:active {
+    color: var(--status-danger, var(--text-feedback-critical, #f23f42));
+}
+
+.vc-fca-danger:hover {
+    /* No --status-danger-background token exists; tint the danger colour instead. */
+    background: color-mix(in srgb, var(--status-danger, #f23f42) 12%, transparent);
+}
+
+/* While we open the real context menu purely to read its items, keep it invisible so
+   the user never sees it flash. Removed as soon as the capture finishes. */
+.vc-fca-capturing [class*="menu_"][role="menu"],
+.vc-fca-capturing [class*="layerContainer"] [role="menu"] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Tooltip, portalled to the app root so the channel row cannot clip it. Colours come
+   from Discord's own variables so it matches the native tooltips in every theme. */
+.vc-fca-tooltip {
+    position: fixed;
+    z-index: 10000;
+    transform: translate(-50%, calc(-100% - 8px));
+    pointer-events: none;
+}
+
+/* Discord renamed these variables (--background-floating became
+   --background-surface-high, --text-normal became --text-default). Both are listed so
+   the tooltip picks up the user's theme on current and older builds alike, and themes
+   such as Catppuccin are followed rather than overridden. */
+.vc-fca-tooltip {
+    --vc-fca-tooltip-bg: var(--background-surface-high, var(--background-floating, #111214));
+}
+
+.vc-fca-tooltip-content {
+    max-width: 190px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: var(--vc-fca-tooltip-bg);
+    box-shadow: var(--shadow-high, var(--elevation-high, 0 8px 16px rgb(0 0 0 / 24%)));
+    color: var(--text-default, var(--text-normal, #dbdee1));
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.vc-fca-tooltip-arrow {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 0;
+    height: 0;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--vc-fca-tooltip-bg);
+}
+
+/* Flipped under the button when there is no room above (rows near the top of the list). */
+.vc-fca-tooltip-below {
+    transform: translate(-50%, 8px);
+}
+
+.vc-fca-tooltip-below .vc-fca-tooltip-arrow {
+    top: auto;
+    bottom: 100%;
+    border-top-color: transparent;
+    border-bottom-color: var(--vc-fca-tooltip-bg);
+}
+
+/* Optionally hide Discord's native invite/settings icons on the hovered row while our
+   own buttons are showing. The elements are tagged at runtime rather than matched by a
+   minified class name, so this stays correct across Discord builds. */
+.vc-fca-native-hidden {
+    display: none !important;
+}
